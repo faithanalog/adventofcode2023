@@ -16,13 +16,13 @@ findFirstBackwd str xs = findFirstFwd (Text.reverse str) (map (second Text.rever
 
 doDay nums = sum $ map (\inp -> findFirstFwd inp nums * 10 + findFirstBackwd inp nums) inputData
 
-day1 = doDay digits
+part1 = doDay digits
 
-day2 = doDay (digits ++ digitsAsWords)
+part2 = doDay (digits ++ digitsAsWords)
 
 main = do
-  print day1
-  print day2
+  print part1
+  print part2
 
 
 digits = zip [0..] [
