@@ -107,149 +107,20 @@ Reset::
 	ld a, h ; ld a, HIGH(wShadowOAM)
 	ldh [hOAMHigh], a
 
-	; `Intro`'s bank has already been loaded earlier
-	; === vi - Day 1 ===
+	; run Day1
+	; jp Day1
 
-	; Data is so big we have to split it across 2 pages lmao. No worries.
-
-	; Each lines is null-terminated, and then a block is also null-terminated
-	; So \0\0 == done with the block, move to next page
-	; Problem is simple. Combine the first and last digit into a two-digit
-	; number. Sum all the 2-digit numbers.
-
-	; We'll store the sum in C:DE
-	ld c, 0
-	ld d, 0
-	ld e, 0
-
-	; First or second loop iteration, or done?
-	ld a, 0
-	push af
-	ld hl, 0
-	push hl
-
-	ld a, BANK(Day1B)
-	push af
-	ld hl, Day1B
-	push hl
-
-	ld a, BANK(Day1A)
-	push af
-	ld hl, Day1A
-	push hl
-
-.Day1SectionLoop
-	; Which section are we doing?
-	pop hl
-	pop af
-	or a
-
-	; Day1Done needs to pop extra af
-	jr z, .Day1Done
+	; run Day2
+	ld a, BANK(Day2)
 	ldh [hCurROMBank], a
 	ld [rROMB0], a
-
-	; Main loop for a line
-.Day1LpA
-	; Zero byte at the start = done with section
-	ld a, [hl]
-	or a
-	jr z, .Day1SectionLoop
-
-	; Find first digit
-.Day1LpAScanFwd
-	ld a, [hl]
-	inc hl
-
-
-	; Less than zero? Next!
-	cp $30
-	jr c, .Day1LpAScanFwd
-
-	; Greater than nine? Next!
-	cp $39 + 1
-	jr nc, .Day1LpAScanFwd
-
-	; K we have a digit!
-	sub $30
-
-	; Mult by 10
-
-	; *2, store
-	add a, a
-	ld b, a
-
-	; *4, *8
-	add a, a
-	add a, a
-	; + *2
-	add a, b
-
-	; Store for later
-	ld b, a
-
-
-.Day1LpAFindZero
-	ld a, [hl]
-	inc hl
-	or 0
-	jr nz, .Day1LpAFindZero
-
-	; Push hl for the next line
-	push hl
-
-	; Back up to end of current line
-	dec hl
-
-	; Find last digit
-.Day1LpAScanBack
-	ld a, [hl]
-	dec hl
-
-	; Find first digit
-
-	; Less than zero? Next!
-	cp $30
-	jr c, .Day1LpAScanBack
-
-	; Greater than nine? Next!
-	cp $39 + 1
-	jr nc, .Day1LpAScanBack
-
-	; K we have a digit!
-	sub $30
-
-	; Add the tens-place
-	add a, b
-
-	; Now add it to our sum
-	ld h, 0
-	ld l, a
-	add hl, de
-	; Carry into C
-	jr nc, .Day1LpANoCarry
-	inc c
-.Day1LpANoCarry
-	ld d, h
-	ld e, l
-
-	; Pop next line
-	pop hl
-
-	; Next loop
-	jr .Day1LpA
-	
+	jp Day2
 	
 
-.Day1Done
-	rst $38
-	; Map in intro so we can crash
-
-	ld a, BANK(Intro)
-	ldh [hCurROMBank], a
-	ld [rROMB0], a
-	; ==/ vi - Day 1 /==
-	jp Intro
+	; ld a, BANK(Intro)
+	; ldh [hCurROMBank], a
+	; ld [rROMB0], a
+	; jp Intro
 
 SECTION "OAM DMA routine", ROMX
 
