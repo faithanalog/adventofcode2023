@@ -1,4 +1,86 @@
+
+SECTION "Day2Vars", WRAM0
+d2v::
+.redMax
+        ds 1
+.greenMax
+        ds 1
+.blueMax
+        ds 1
+.gameID
+        ds 1
+.part1sum
+        ds 2
+.part2sum
+        ds 4
+
+
 SECTION "Day2", ROMX
+
+; IN A * DE
+; OUT A:DE
+Day2_Mult_A_DE::
+        push hl
+        push bc
+
+        ld hl, 0
+        ld c, 0
+
+        ; z80bits <3
+	add	a,a		; optimised 1st iteration
+	jr	nc,:+
+	ld	h,d
+	ld	l,e
+:
+
+	add	hl,hl		; unroll 7 times
+	rla			; ...
+	jr	nc,:+		; ...
+	add	hl,de		; ...
+	adc	a,c		; ...
+:
+	add	hl,hl		; unroll 7 times
+	rla			; ...
+	jr	nc,:+		; ...
+	add	hl,de		; ...
+	adc	a,c		; ...
+:
+	add	hl,hl		; unroll 7 times
+	rla			; ...
+	jr	nc,:+		; ...
+	add	hl,de		; ...
+	adc	a,c		; ...
+:
+	add	hl,hl		; unroll 7 times
+	rla			; ...
+	jr	nc,:+		; ...
+	add	hl,de		; ...
+	adc	a,c		; ...
+:
+	add	hl,hl		; unroll 7 times
+	rla			; ...
+	jr	nc,:+		; ...
+	add	hl,de		; ...
+	adc	a,c		; ...
+:
+	add	hl,hl		; unroll 7 times
+	rla			; ...
+	jr	nc,:+		; ...
+	add	hl,de		; ...
+	adc	a,c		; ...
+:
+	add	hl,hl		; unroll 7 times
+	rla			; ...
+	jr	nc,:+		; ...
+	add	hl,de		; ...
+	adc	a,c		; ...
+:
+        ld d,h
+        ld e,l
+
+        pop bc
+        pop hl
+        ret
 
 Day2::
         ; yay this one fits in one page!!
@@ -10,15 +92,27 @@ Day2::
         ; - check that r <= 12, g <= 13, b <= 14
         ; - if so, add game ID to our sum
 
+        ; Part2 - Compute max(r), max(g), max(b) for each game. 
+        ; Calculate sum(max(r) * max(g) * max(b)) across all games
 
-        ; Running sum
-        ld hl, 0
-        push hl
+        ; Zero out sums
+        xor a
+        ld [d2v.part1sum], a
+        ld [d2v.part1sum + 1], a
+        ld [d2v.part2sum], a
+        ld [d2v.part2sum + 1], a
+        ld [d2v.part2sum + 2], a
+        ld [d2v.part2sum + 3], a
 
         ; Data pointer. hl will be the data pointer for the rest of the code
         ld hl, Day2Input
 
 .p1ProcessLine
+        ; clear maximums
+        xor a
+        ld [d2v.redMax], a
+        ld [d2v.greenMax], a
+        ld [d2v.blueMax], a
 
         ; Skip "Game "
         ld de, 5
@@ -58,8 +152,9 @@ Day2::
         ld c, a
         jr .p1ReadID
 .p1ReadIDDone
-        ; push ID
-        push bc
+        ; store ID
+        ld a, c
+        ld [d2v.gameID], a
         
         ; At this point, HL is pointing to the space after the :
         ;
@@ -118,9 +213,24 @@ Day2::
         ; c = count, [hl] = 'r'
         ld a, 12
         cp c
-        ; if carry, count > 12, discard game
-        jr c, .p1DiscardGame
-        ; No carry, skip "red" and move [hl] to terminator
+        ; if carry, count > 12, discard game for part1
+        jr nc, .p1KeepGameRed
+
+        ; Discard by setting game ID to 0
+        xor a
+        ld [d2v.gameID], a
+        
+.p1KeepGameRed
+        ; Compute maximum
+        ld a, [d2v.redMax]
+        cp c
+        ; If carry, c > a, so store new maximum
+        jr nc, .p1SkipRedMax
+        ld a, c
+        ld [d2v.redMax], a
+.p1SkipRedMax
+
+        ; skip "red" and move [hl] to terminator
         ld de, 3
         add hl, de
         jr .p1ProcessTerminator
@@ -130,8 +240,23 @@ Day2::
         ld a, 13
         cp c
         ; if carry, count > 13, discard game
-        jr c, .p1DiscardGame
-        ; No carry, skip "red" and move [hl] to terminator
+        jr nc, .p1KeepGameGreen
+
+        ; Discard by setting game ID to 0
+        xor a
+        ld [d2v.gameID], a
+
+.p1KeepGameGreen
+        ; Compute minimum
+        ld a, [d2v.greenMax]
+        cp c
+        ; If carry, c > a, so store new minimum
+        jr nc, .p1SkipGreenMax
+        ld a, c
+        ld [d2v.greenMax], a
+.p1SkipGreenMax
+
+        ; skip "green" and move [hl] to terminator
         ld de, 5
         add hl, de
         jr .p1ProcessTerminator
@@ -141,8 +266,23 @@ Day2::
         ld a, 14
         cp c
         ; if carry, count > 14, discard game
-        jr c, .p1DiscardGame
-        ; No carry, skip "blue" and move [hl] to terminator
+        jr nc, .p1KeepGameBlue
+
+        ; Discard by setting game ID to 0
+        xor a
+        ld [d2v.gameID], a
+
+.p1KeepGameBlue
+        ; Compute minimum
+        ld a, [d2v.blueMax]
+        cp c
+        ; If carry, c > a, so store new minimum
+        jr nc, .p1SkipBlueMax
+        ld a, c
+        ld [d2v.blueMax], a
+.p1SkipBlueMax
+
+        ; skip "blue" and move [hl] to terminator
         ld de, 4
         add hl, de
         jr .p1ProcessTerminator
@@ -160,53 +300,91 @@ Day2::
         or a
         jr nz, .p1ReadEntries
 
-        ; Pop ID
-        pop bc
 
-        ; Pop sum
-        pop de
-        
-        ; Add ID to sum
-        ld a, e
-        add a, c
+; End of line processing!
+
+; Part 1
+        ; load ID sum into DE
+        ld a, [d2v.part1sum]
         ld e, a
+        ld a, [d2v.part1sum + 1]
+        ld d, a
+
+        ; load ID
+        ld a, [d2v.gameID]
+
+        ; Add ID to sum, store sum
+        add a, e
         jr nc, .p1ProcessTerminatorNoCarry
         inc d
 .p1ProcessTerminatorNoCarry
-        ; Push sum
-        push de
+        ld [d2v.part1sum], a
+        ld a, d
+        ld [d2v.part1sum + 1], a
+
+; Part 2
+        ; R * G
+
+        ; R in DE
+        ld d, 0
+        ld a, [d2v.redMax]
+        ld e, a
+
+        ; G in A
+        ld a, [d2v.greenMax]
+
+
+        ; Mult r * g! Result in A:DE, but A will be 0 for this first mult
+        call Day2_Mult_A_DE
+
+        ld a, [d2v.blueMax]
+        ; Mult rg * b! Result in A:DE
+        call Day2_Mult_A_DE
+
+        ; Now result is C:DE
+        ld c, a
+
+        ; 32-bit sum (im paranoid about the result max)
+        ld a, [d2v.part2sum]
+        add a, e
+        ld [d2v.part2sum], a
+        ld a, [d2v.part2sum + 1]
+        adc a, d
+        ld [d2v.part2sum + 1], a
+        ld a, [d2v.part2sum + 2]
+        adc a, c
+        ld [d2v.part2sum + 2], a
+        ld a, [d2v.part2sum + 3]
+        adc a, 0
+        ld [d2v.part2sum + 3], a
+        
+        
 
         ; Process the next line!
-        jr .p1NextLine
-             
-
-.p1DiscardGame
-        ; In this case we decided the game is impossible.
-
-        ; discard ID
-        pop bc
-
-        ; Skip to start of the next line
-.p1DiscardGameScanEnd
-        ld a, [hl]
-        inc hl
-        or a
-        jr nz, .p1DiscardGameScanEnd
-
-        ; Next line!
-        jr .p1NextLine
-
 .p1NextLine
         ; [hl] should be positioned at the start of the next line. If it's 
         ; pointer to zero, that means we hit the end of the input
         ld a, [hl]
         or a
-        jr nz, .p1ProcessLine
+        jp nz, .p1ProcessLine
 
         ; Ok its done
 .p1Done
-        ; Pop sum
-        pop de
+        ; Load p1sum into DE
+        ld a, [d2v.part1sum]
+        ld e, a
+        ld a, [d2v.part1sum + 1]
+        ld d, a 
+
+        ; load p2sum into BC:HL
+        ld a, [d2v.part2sum]
+        ld l, a
+        ld a, [d2v.part2sum + 1]
+        ld h, a
+        ld a, [d2v.part2sum + 2]
+        ld c, a
+        ld a, [d2v.part2sum + 3]
+        ld b, a
 
         ; "Print" with the error screen
         rst $38
